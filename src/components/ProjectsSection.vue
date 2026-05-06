@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjects } from '@/composables/useProjects'
 import ProjectCard from './ProjectCard.vue'
@@ -7,7 +7,7 @@ import TagFilter from './TagFilter.vue'
 
 const { t } = useI18n()
 
-const { projects, projectsI18n, loading, error, fetchProjects } = useProjects()
+const { projects, projectsI18n, loading, error, fetchProjects, subscribeToRealtime, unsubscribe } = useProjects()
 
 provide('projectsI18n', projectsI18n)
 
@@ -26,8 +26,13 @@ const filteredProjects = computed(() => {
   return projects.value.filter(p => p.tags.includes(selectedTag.value))
 })
 
-onMounted(() => {
-  fetchProjects()
+onMounted(async () => {
+  await fetchProjects()
+  subscribeToRealtime()
+})
+
+onUnmounted(() => {
+  unsubscribe()
 })
 </script>
 
@@ -65,6 +70,19 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
+}
+
+.loading-message,
+.error-message {
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 15px;
+  padding: 48px 0;
+}
+
+.error-message {
+  color: var(--accent);
 }
 
 .empty-message {
