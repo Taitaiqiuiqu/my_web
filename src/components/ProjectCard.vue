@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Project } from '@/data/projects'
-import { projectsI18n } from '@/data/projects'
+import { projectsI18n as staticProjectsI18n } from '@/data/projects'
 
 const props = defineProps<{
   project: Project
@@ -10,8 +10,28 @@ const props = defineProps<{
 
 const { t, locale } = useI18n()
 
+const dynamicProjectsI18n = inject<Record<string, Record<string, { name: string; description: string }>>>('projectsI18n', {} as Record<string, Record<string, { name: string; description: string }>>)
+
 const i18n = computed(() => {
-  return projectsI18n[locale.value]?.[props.project.nameKey] || { name: '', description: '' }
+  if (dynamicProjectsI18n && dynamicProjectsI18n[locale.value]?.[props.project.nameKey]) {
+    return dynamicProjectsI18n[locale.value][props.project.nameKey]
+  }
+  return staticProjectsI18n[locale.value]?.[props.project.nameKey] || { name: '', description: '' }
+})
+
+const imageError = ref(false)
+const imageLoaded = ref(false)
+
+function handleImageError() {
+  imageError.value = true
+}
+
+function handleImageLoad() {
+  imageLoaded.value = true
+}
+
+const showPlaceholder = computed(() => {
+  return !props.project.image || imageError.value || !imageLoaded.value
 })
 
 function getTagColor(tag: string): string {
@@ -43,15 +63,21 @@ function getTagColor(tag: string): string {
 <template>
   <article class="project-card">
     <div class="card-image">
-      <div class="image-placeholder">
-        <pre class="placeholder-ascii">
-{`+-------------+
+      <div v-if="showPlaceholder" class="image-placeholder">
+        <pre class="placeholder-ascii">+-------------+
 |             |
 |   Project   |
 |             |
-+-------------+`}
-        </pre>
++-------------+</pre>
       </div>
+      <img
+        v-else
+        :src="project.image"
+        :alt="i18n.name"
+        class="card-img"
+        @error="handleImageError"
+        @load="handleImageLoad"
+      />
     </div>
     <div class="card-body">
       <h3 class="card-title">&gt; {{ i18n.name }}</h3>
@@ -99,6 +125,20 @@ function getTagColor(tag: string): string {
   align-items: center;
   justify-content: center;
   min-height: 160px;
+}
+
+.card-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 160px;
 }
 
 .placeholder-ascii {

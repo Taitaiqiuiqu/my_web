@@ -26,6 +26,7 @@ export default {
     title: 'projects',
     filterAll: '全部',
     empty: '没有找到匹配的项目，请尝试其他筛选条件。',
+    loading: '加载中...',
     noLink: '暂无链接',
     source: '源码',
     demo: '在线演示'

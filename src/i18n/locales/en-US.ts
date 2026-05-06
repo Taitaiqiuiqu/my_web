@@ -26,6 +26,7 @@ export default {
     title: 'projects',
     filterAll: 'All',
     empty: 'No projects found. Try another filter.',
+    loading: 'Loading...',
     noLink: 'No Link',
     source: 'Source',
     demo: 'Live Demo'

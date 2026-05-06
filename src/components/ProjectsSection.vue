@@ -1,20 +1,45 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { projects, getAllTags } from '@/data/projects'
+import { useProjects, createProjectI18nMap } from '@/composables/useProjects'
+import { supabase } from '@/utils/supabase'
 import ProjectCard from './ProjectCard.vue'
 import TagFilter from './TagFilter.vue'
 
 const { t } = useI18n()
 
-const allTags = getAllTags()
+const { projects, loading, error, fetchProjects } = useProjects()
+
+const allTags = computed(() => {
+  const tags = new Set<string>()
+  projects.value.forEach(p => p.tags.forEach(t => tags.add(t)))
+  return Array.from(tags)
+})
+
 const selectedTag = ref('all')
 
 const filteredProjects = computed(() => {
   if (selectedTag.value === 'all') {
-    return projects
+    return projects.value
   }
-  return projects.filter(p => p.tags.includes(selectedTag.value))
+  return projects.value.filter(p => p.tags.includes(selectedTag.value))
+})
+
+provide('projectsI18n', ref({}))
+
+onMounted(async () => {
+  await fetchProjects()
+
+  if (supabase && projects.value.length > 0) {
+    const { data } = await supabase
+      .from('projects')
+      .select('*')
+
+    if (data) {
+      const i18nMap = createProjectI18nMap(data)
+      provide('projectsI18n', ref(i18nMap))
+    }
+  }
 })
 </script>
 
@@ -22,26 +47,56 @@ const filteredProjects = computed(() => {
   <section id="projects" class="section">
     <h2 class="section-title">{{ t('projects.title') }}</h2>
 
-    <TagFilter
-      :tags="allTags"
-      :selected-tag="selectedTag"
-      all-label-key="projects.filterAll"
-      @select="selectedTag = $event"
-    />
+    <div v-if="loading" class="loading-message">&gt; {{ t('projects.loading') }}</div>
 
-    <div v-if="filteredProjects.length > 0" class="projects-grid">
-      <ProjectCard
-        v-for="project in filteredProjects"
-        :key="project.id"
-        :project="project"
+    <div v-else-if="error" class="error-message">&gt; {{ error }}</div>
+
+    <template v-else>
+      <TagFilter
+        :tags="allTags"
+        :selected-tag="selectedTag"
+        all-label-key="projects.filterAll"
+        @select="selectedTag = $event"
       />
-    </div>
 
-    <p v-else class="empty-message">&gt; {{ t('projects.empty') }}</p>
+      <div v-if="filteredProjects.length > 0" class="projects-grid">
+        <ProjectCard
+          v-for="project in filteredProjects"
+          :key="project.id"
+          :project="project"
+        />
+      </div>
+
+      <p v-else class="empty-message">&gt; {{ t('projects.empty') }}</p>
+    </template>
   </section>
 </template>
 
 <style scoped>
+.section {
+  padding: 60px 0;
+}
+
+.section-title {
+  font-size: 28px;
+  color: var(--text-primary);
+  margin-bottom: 32px;
+  font-family: "SF Mono", Consolas, monospace;
+}
+
+.loading-message,
+.error-message {
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 15px;
+  padding: 48px 0;
+}
+
+.error-message {
+  color: var(--accent);
+}
+
 .projects-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
