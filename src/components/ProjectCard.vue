@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Project } from '@/data/projects'
 import { projectsI18n as staticProjectsI18n } from '@/data/projects'
@@ -10,11 +10,13 @@ const props = defineProps<{
 
 const { t, locale } = useI18n()
 
-const dynamicProjectsI18n = inject<Record<string, Record<string, { name: string; description: string }>>>('projectsI18n', {} as Record<string, Record<string, { name: string; description: string }>>)
+type I18nMap = Record<string, Record<string, { name: string; description: string }>>
+const dynamicProjectsI18n = inject<Ref<I18nMap>>('projectsI18n', ref({ 'zh-CN': {}, 'en-US': {} }))
 
 const i18n = computed(() => {
-  if (dynamicProjectsI18n && dynamicProjectsI18n[locale.value]?.[props.project.nameKey]) {
-    return dynamicProjectsI18n[locale.value][props.project.nameKey]
+  const map = dynamicProjectsI18n.value
+  if (map && map[locale.value]?.[props.project.nameKey]) {
+    return map[locale.value][props.project.nameKey]
   }
   return staticProjectsI18n[locale.value]?.[props.project.nameKey] || { name: '', description: '' }
 })

@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { supabase } from '@/utils/supabase'
 import type { Project } from '@/data/projects'
 
@@ -17,6 +17,10 @@ export interface ProjectRow {
 
 export function useProjects() {
   const projects = ref<Project[]>([])
+  const projectsI18n = ref<Record<string, Record<string, { name: string; description: string }>>>({
+    'zh-CN': {},
+    'en-US': {}
+  })
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -37,7 +41,9 @@ export function useProjects() {
 
       if (fetchError) throw fetchError
 
-      projects.value = (data || []).map((row: ProjectRow) => ({
+      const rows: ProjectRow[] = data || []
+
+      projects.value = rows.map((row: ProjectRow) => ({
         id: row.project_id,
         nameKey: row.project_id,
         descriptionKey: `${row.project_id}Desc`,
@@ -46,6 +52,14 @@ export function useProjects() {
         githubUrl: row.github_url || undefined,
         demoUrl: row.demo_url || undefined
       }))
+
+      const zhCN: Record<string, { name: string; description: string }> = {}
+      const enUS: Record<string, { name: string; description: string }> = {}
+      rows.forEach(row => {
+        zhCN[row.project_id] = { name: row.name_zh, description: row.description_zh }
+        enUS[row.project_id] = { name: row.name_en, description: row.description_en }
+      })
+      projectsI18n.value = { 'zh-CN': zhCN, 'en-US': enUS }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
       console.error('Error fetching projects:', err)
@@ -56,35 +70,9 @@ export function useProjects() {
 
   return {
     projects,
+    projectsI18n,
     loading,
     error,
     fetchProjects
   }
-}
-
-export function createProjectI18nEntry(row: ProjectRow) {
-  return {
-    name: row.name_en,
-    description: row.description_en
-  }
-}
-
-export function createProjectI18nMap(rows: ProjectRow[]): Record<string, Record<string, { name: string; description: string }>> {
-  const map: Record<string, Record<string, { name: string; description: string }>> = {
-    'zh-CN': {},
-    'en-US': {}
-  }
-
-  rows.forEach(row => {
-    map['zh-CN'][row.project_id] = {
-      name: row.name_zh,
-      description: row.description_zh
-    }
-    map['en-US'][row.project_id] = {
-      name: row.name_en,
-      description: row.description_en
-    }
-  })
-
-  return map
 }

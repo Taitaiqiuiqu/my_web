@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useProjects, createProjectI18nMap } from '@/composables/useProjects'
-import { supabase } from '@/utils/supabase'
+import { useProjects } from '@/composables/useProjects'
 import ProjectCard from './ProjectCard.vue'
 import TagFilter from './TagFilter.vue'
 
 const { t } = useI18n()
 
-const { projects, loading, error, fetchProjects } = useProjects()
+const { projects, projectsI18n, loading, error, fetchProjects } = useProjects()
+
+provide('projectsI18n', projectsI18n)
 
 const allTags = computed(() => {
   const tags = new Set<string>()
@@ -25,21 +26,8 @@ const filteredProjects = computed(() => {
   return projects.value.filter(p => p.tags.includes(selectedTag.value))
 })
 
-provide('projectsI18n', ref({}))
-
-onMounted(async () => {
-  await fetchProjects()
-
-  if (supabase && projects.value.length > 0) {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-
-    if (data) {
-      const i18nMap = createProjectI18nMap(data)
-      provide('projectsI18n', ref(i18nMap))
-    }
-  }
+onMounted(() => {
+  fetchProjects()
 })
 </script>
 
@@ -73,30 +61,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.section {
-  padding: 60px 0;
-}
-
-.section-title {
-  font-size: 28px;
-  color: var(--text-primary);
-  margin-bottom: 32px;
-  font-family: "SF Mono", Consolas, monospace;
-}
-
-.loading-message,
-.error-message {
-  text-align: center;
-  color: var(--text-secondary);
-  font-family: "SF Mono", Consolas, monospace;
-  font-size: 15px;
-  padding: 48px 0;
-}
-
-.error-message {
-  color: var(--accent);
-}
-
 .projects-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
